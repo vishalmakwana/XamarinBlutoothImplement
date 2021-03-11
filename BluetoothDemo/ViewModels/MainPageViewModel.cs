@@ -7,6 +7,7 @@ using Plugin.BLE.Abstractions.Exceptions;
 using Prism.Commands;
 using Prism.Navigation;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using Xamarin.Essentials;
@@ -15,8 +16,9 @@ namespace BluetoothDemo.ViewModels
 {
     public class MainPageViewModel : ViewModelBase
     {
-        public IAdapter _adapterService;
-        private readonly IBluetoothService _bluetoothService;
+        readonly IAdapter _adapterService;
+        readonly IBluetoothLE _bluetoothLE;
+
 
         private List<IDevice> _deviceList;
 
@@ -34,55 +36,75 @@ namespace BluetoothDemo.ViewModels
             set { SetProperty(ref _selectedItem, value); }
         }
 
-        private bool isRefreshing = false;
+        //private bool isRefreshing = false;
 
-        public bool IsRefreshing
+        //public bool IsRefreshing
+        //{
+        //    get { return isRefreshing; }
+        //    set { SetProperty(ref isRefreshing, value); }
+        //}
+
+        private DelegateCommand _scanCommand;
+        public DelegateCommand ScanCommand =>
+            _scanCommand ?? (_scanCommand = new DelegateCommand(async () => await ExecuteScanCommand()));
+
+        async Task ExecuteScanCommand()
         {
-            get { return isRefreshing; }
-            set { SetProperty(ref isRefreshing, value); }
+            var LocationPermission = await PermissionHelpers.RequestIfNeeded<Permissions.LocationAlways>();
+            
+            UserDialogsService.ShowLoading("Scan Bluetooth Device", MaskType.Gradient);
+            if (LocationPermission == PermissionStatus.Granted)
+            {
+                DeviceList = new List<IDevice>();
+                await _adapterService.StartScanningForDevicesAsync();
+                DeviceList = _adapterService.DiscoveredDevices.ToList();
+            }
+            else
+            {
+                await UserDialogsService.AlertAsync("Location Permission is required");
+            }
+            UserDialogsService.HideLoading();
+
         }
+
 
         private DelegateCommand<IDevice> _itemSelectedCommand;
 
         public DelegateCommand<IDevice> ItemSelectedCommand =>
             _itemSelectedCommand ?? (_itemSelectedCommand = new DelegateCommand<IDevice>(async (a) => await ExecuteItemSelectedCommand(a)));
 
-        private DelegateCommand _refreshCommand;
+        //private DelegateCommand _refreshCommand;
 
-        public DelegateCommand RefreshCommand =>
-            _refreshCommand ?? (_refreshCommand = new DelegateCommand(async () => await ExecuteRefreshCommand()));
+        //public DelegateCommand RefreshCommand =>
+        //    _refreshCommand ?? (_refreshCommand = new DelegateCommand(async () => await ExecuteRefreshCommand()));
 
-        private async Task ExecuteRefreshCommand()
-        {
-            IsRefreshing = true;
-            await GetBlutoothDevices();
-            IsRefreshing = false;
-        }
+        //private async Task ExecuteRefreshCommand()
+        //{
+        //    IsRefreshing = true;
+        //    await GetBlutoothDevices();
+        //    IsRefreshing = false;
+        //}
 
         private async Task ExecuteItemSelectedCommand(IDevice device)
         {
             try
             {
-
-                IsRefreshing = true;
+                UserDialogsService.ShowLoading("Connect To Device", MaskType.Gradient);
                 await _adapterService.ConnectToDeviceAsync(device);
-
-                //await _bluetoothService.ConnectToBluetoothDeviceAsync(device);
-                await ExecuteRefreshCommand();
-                IsRefreshing = false;
+                UserDialogsService.HideLoading();
+                await ExecuteScanCommand();
             }
             catch (DeviceConnectionException e)
             {
-                // ... could not connect to device
+
             }
         }
 
-        public MainPageViewModel(INavigationService navigationService, IUserDialogs userDialogsService, IBluetoothService bluetoothService)
+        public MainPageViewModel(INavigationService navigationService, IUserDialogs userDialogsService)
             : base(navigationService, userDialogsService)
         {
             _adapterService = CrossBluetoothLE.Current.Adapter;
-            IsRefreshing = true;
-            _bluetoothService = bluetoothService;
+            _bluetoothLE = CrossBluetoothLE.Current;
         }
 
         public async override void OnNavigatedTo(INavigationParameters parameters)
@@ -93,16 +115,16 @@ namespace BluetoothDemo.ViewModels
         public async override void OnAppearing()
         {
             base.OnAppearing();
-            
+
         }
 
         private async Task GetBlutoothDevices()
         {
             var LocationPermission = await PermissionHelpers.RequestIfNeeded<Permissions.LocationAlways>();
-            if (LocationPermission==PermissionStatus.Granted)
+            if (LocationPermission == PermissionStatus.Granted)
             {
                 DeviceList = new List<IDevice>();
-              
+
                 await _adapterService.StartScanningForDevicesAsync();
                 _adapterService.DeviceDiscovered += (s, a) => DeviceList.Add(a.Device);
 
@@ -111,7 +133,7 @@ namespace BluetoothDemo.ViewModels
             {
                 await UserDialogsService.AlertAsync("Location Permission is required");
             }
-           
+
         }
     }
 }

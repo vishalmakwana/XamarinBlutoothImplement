@@ -1,4 +1,5 @@
 ﻿using Acr.UserDialogs;
+using Android;
 using Android.App;
 using Android.Content.PM;
 using Android.OS;
@@ -20,6 +21,11 @@ namespace BluetoothDemo.Droid
 
             global::Xamarin.Forms.Forms.Init(this, savedInstanceState);
             UserDialogs.Init(this);
+            //this.RequestPermissions(new[]
+            //{
+            //    Manifest.Permission.AccessCoarseLocation,
+            //    Manifest.Permission.BluetoothPrivileged
+            //}, 0);
             LoadApplication(new App(new AndroidInitializer()));
         }
 

@@ -17,6 +17,7 @@ namespace BluetoothDemo.ViewModels
         protected INavigationService NavigationService { get; private set; }
         protected IUserDialogs UserDialogsService { get; private set; }
 
+
         private string _title;
 
         
